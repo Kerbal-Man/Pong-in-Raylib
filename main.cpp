@@ -1,82 +1,143 @@
-#include <iostream>
 #include "raylib.h"
-using namespace std;
 
-struct Ball {
-    float x, y;
-    float speedX, speedY;
+struct Ball
+{
+	float x, y;
+	float speedX, speedY;
+	float radius;
 
-    void draw() {
-        DrawCircle((int) x, (int) y, 5.0f, WHITE);
-    }
+	void Draw()
+	{
+		DrawCircle((int)x, (int)y, radius, WHITE);
+	}
 };
 
-struct Paddle {
-    float x, y;
-    float speed;
-    float width, height;
+struct Paddle
+{
+	float x, y;
+	float speed;
+	float width, height;
 
-    void draw() {
-        DrawRectangle(x, y, width, height, WHITE);
-    }
+	Rectangle GetRect()
+	{
+		return Rectangle{ x - width / 2, y - height / 2, 10, 100 };
+	}
+
+	void Draw()
+	{
+		DrawRectangleRec(GetRect(), WHITE);
+	}
 };
 
-int main() {
+int main()
+{
+	InitWindow(800, 600, "Pong");
+	SetWindowState(FLAG_VSYNC_HINT);
 
-    InitWindow(800, 600, "Pong");
-    SetWindowState(FLAG_VSYNC_HINT);
+	Ball ball;
+	ball.x = GetScreenWidth() / 2.0f;
+	ball.y = GetScreenHeight() / 2.0f;
+	ball.radius = 5;
+	ball.speedX = 300;
+	ball.speedY = 300;
 
-    Ball ball;
-     ball.speedX = 100;
-     ball.speedY = 300;
-     ball.x = GetScreenWidth() / 2.0f;
-     ball.y = GetScreenHeight() / 2.0f;
+	Paddle leftPaddle;
+	leftPaddle.x = 50;
+	leftPaddle.y = GetScreenHeight() / 2;
+	leftPaddle.width = 10;
+	leftPaddle.height = 100;
+	leftPaddle.speed = 500;
 
-     Paddle leftPaddle;
-     leftPaddle.x = 50;
-     leftPaddle.y = GetScreenHeight() / 2 - 50;
-     leftPaddle.width = 10;
-     leftPaddle.height = 100;
-     leftPaddle.speed = 500;
+	Paddle rightPaddle;
+	rightPaddle.x = GetScreenWidth() - 50;
+	rightPaddle.y = GetScreenHeight() / 2;
+	rightPaddle.width = 10;
+	rightPaddle.height = 100;
+	rightPaddle.speed = 500;
 
-     Paddle rightPaddle;
-     rightPaddle.x = 50;
-     rightPaddle.y = GetScreenHeight() / 2 - 50;
-     rightPaddle.width = 10;
-     rightPaddle.height = 100;
-     rightPaddle.speed = 500;
+	const char* winnerText = nullptr;
 
-    cout << "Started!\n";
+	while (!WindowShouldClose())
+	{
+		ball.x += ball.speedX * GetFrameTime();
+		ball.y += ball.speedY * GetFrameTime();
 
-    while (!WindowShouldClose()) {
+		if (ball.y < 0)
+		{
+			ball.y = 0;
+			ball.speedY *= -1;
+		}
+		if (ball.y > GetScreenHeight())
+		{
+			ball.y = GetScreenHeight();
+			ball.speedY *= -1;
+		}
 
-        ball.x += GetFrameTime() * ball.speedX;
-        ball.y += GetFrameTime() * ball.speedY;
+		leftPaddle.y = ball.y;
 
-        if (ball.y < 0) {
-            ball.y = 0;
-            ball.speedY *= -1;
-        }
-        if (ball.y > GetScreenHeight()) {
-            ball.y = GetScreenHeight();
-            ball.speedY *= -1;
-        }
 
-        BeginDrawing();
-            ClearBackground(BLACK);
-            
-            ball.draw();
-            
-            rightPaddle.draw();
-            leftPaddle.draw();
+		if (IsKeyDown(KEY_UP))
+		{
+			rightPaddle.y -= rightPaddle.speed * GetFrameTime();
+		}
+		if (IsKeyDown(KEY_DOWN))
+		{
+			rightPaddle.y += rightPaddle.speed * GetFrameTime();
+		}
 
-            DrawFPS(50, 50);
-        EndDrawing();
+		if (CheckCollisionCircleRec(Vector2{ ball.x, ball.y }, ball.radius, leftPaddle.GetRect()))
+		{
+			if (ball.speedX < 0)
+			{
+				ball.speedX *= -1.1f;
+				ball.speedY = (ball.y - leftPaddle.y) / (leftPaddle.height / 2) * ball.speedX;
+			}
+		}
+		if (CheckCollisionCircleRec(Vector2{ ball.x, ball.y }, ball.radius, rightPaddle.GetRect()))
+		{
+			if (ball.speedX > 0)
+			{
+				ball.speedX *= -1.1f;
+				ball.speedY = (ball.y - rightPaddle.y) / (rightPaddle.height / 2) * -ball.speedX;
+			}
+		}
 
-    }
+		if (ball.x < 0)
+		{
+			winnerText = "Right Player Wins!";
+		}
+		if (ball.x > GetScreenWidth())
+		{
+			winnerText = "Left Player Wins!";
+		}
+		if (winnerText && IsKeyPressed(KEY_SPACE))
+		{
+			ball.x = GetScreenWidth() / 2;
+			ball.y = GetScreenHeight() / 2;
+			ball.speedX = 300;
+			ball.speedY = 300;
+			winnerText = nullptr;
+		}
 
-    
-    //Destroy and close everything (cause memory leaks) once exiting the program
-    CloseWindow();
-    return 1;
+
+		BeginDrawing();
+		ClearBackground(BLACK);
+
+		ball.Draw();
+		leftPaddle.Draw();
+		rightPaddle.Draw();
+
+		if (winnerText)
+		{
+			int textWidth = MeasureText(winnerText, 60);
+			DrawText(winnerText, GetScreenWidth() / 2 - textWidth / 2, GetScreenHeight() / 2 - 30, 60, YELLOW);
+		}
+
+		DrawFPS(10, 10);
+		EndDrawing();
+	}
+
+	CloseWindow();
+
+	return 0;
 }
